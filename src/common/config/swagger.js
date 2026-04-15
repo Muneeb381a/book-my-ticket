@@ -9,8 +9,8 @@ const options = {
       description: "REST API for a movie ticket booking system with seat locking and booking management.",
     },
     servers: [
+      { url: "https://book-my-ticket-brown.vercel.app", description: "Production" },
       { url: "http://localhost:5000", description: "Local" },
-      { url: "https://your-app.vercel.app", description: "Production" },
     ],
     components: {
       securitySchemes: {
