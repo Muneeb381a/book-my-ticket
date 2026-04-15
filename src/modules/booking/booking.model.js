@@ -33,20 +33,14 @@ const bookingSchema = new mongoose.Schema(
       index: true,
     },
 
-    // --- Payment stub ---
-    // Wire a real gateway (Stripe, PayFast, etc.) here later.
-    // The field names are intentionally gateway-agnostic.
     paymentStatus: {
       type: String,
       enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
     },
-    paymentId: {
-      type: String,
-      default: null, // populated by payment gateway webhook on success
-    },
+    paymentId: { type: String, default: null },
 
-    // Human-readable reference for customer support (e.g. "BMS-20250415-A3F9")
+    // e.g. "BMS-20250415-A3F9C2" — generated in pre-save hook
     bookingRef: {
       type: String,
       unique: true,
@@ -58,14 +52,8 @@ const bookingSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-// "My bookings" — most recent first
-bookingSchema.index({ user: 1, createdAt: -1 });
-
-// Customer support lookup by ref
-bookingSchema.index({ bookingRef: 1 }, { unique: true });
-
-// "Has this user already booked this show?" — duplicate booking guard
-bookingSchema.index({ show: 1, user: 1 });
+bookingSchema.index({ user: 1, createdAt: -1 }); // "my bookings" sorted newest first
+bookingSchema.index({ show: 1, user: 1 });        // duplicate booking guard
 
 // Generate bookingRef before first save
 bookingSchema.pre("save", function (next) {
