@@ -7,7 +7,12 @@ const PORT = process.env.PORT || 5000;
 
 const start = async () => {
   await connectDB();
-  startLockCleanupJob(); // release stale seat locks every 2 minutes
+
+  // setInterval doesn't work on Vercel (serverless) — only run locally
+  if (process.env.NODE_ENV !== "production") {
+    startLockCleanupJob();
+  }
+
   app.listen(PORT, () => {
     console.log(`Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
   });
