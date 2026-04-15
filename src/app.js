@@ -1,6 +1,7 @@
 import cookieParser from "cookie-parser";
 import cors from "cors";
 import express from "express";
+import connectDB from "./common/config/db.js";
 import { swaggerSpec } from "./common/config/swagger.js";
 import authRoute    from "./modules/auth/auth.routes.js";
 import movieRoute   from "./modules/movie/movie.routes.js";
@@ -12,11 +13,21 @@ const app = express();
 
 app.use(cors({
   origin: process.env.CLIENT_URL || "*",
-  credentials: true, // needed for the refresh token cookie
+  credentials: true,
 }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
+
+// ensure DB is ready before every request — handles Vercel cold starts
+app.use(async (_req, _res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    next(err);
+  }
+});
 
 // ── Swagger docs ─────────────────────────────────────────────────────────────
 // Spec as JSON — referenced by the UI below
