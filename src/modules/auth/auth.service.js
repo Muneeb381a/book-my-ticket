@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import { sendMail, sendVerificationEmail } from "../../common/config/email.js";
+import { sendMail } from "../../common/config/email.js"; // sendVerificationEmail removed — email verification disabled
 import ApiError from "../../common/utils/api-error.js";
 import {
   generateAccessToken,
@@ -16,27 +16,17 @@ const register = async ({ name, email, password, role }) => {
   const existing = await User.findOne({ email });
   if (existing) throw ApiError.conflict("Email already exists");
 
-  const { rawToken, hashedToken } = generateResetToken();
-
+  // Email verification is disabled — users are active immediately after registration
   const user = await User.create({
     name,
     email,
     password,
     role,
-    verificationToken: hashedToken,
-    verificationTokenExpires: Date.now() + 24 * 60 * 60 * 1000, // 24 hours
+    isVerified: true, // skip email verification flow
   });
-
-  try {
-    await sendVerificationEmail(email, rawToken); // fixed: was `token`
-  } catch (error) {
-    console.error("Verification email failed:", error);
-  }
 
   const userObj = user.toObject();
   delete userObj.password;
-  delete userObj.verificationToken;
-  delete userObj.verificationTokenExpires;
 
   return userObj;
 };
@@ -48,9 +38,7 @@ const login = async ({ email, password }) => {
   const isMatch = await user.comparePassword(password);
   if (!isMatch) throw ApiError.unauthorized("Invalid email or password");
 
-  if (!user.isVerified) {
-    throw ApiError.forbidden("Please verify your email before logging in");
-  }
+  // isVerified check removed — email verification is disabled
 
   const accessToken = generateAccessToken({ id: user._id, role: user.role });
   const refreshToken = generateRefreshToken({ id: user._id });
@@ -96,13 +84,18 @@ const forgotPassword = async (email) => {
   await user.save({ validateBeforeSave: false });
 
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
-  await sendMail(
-    email,
-    "Password Reset Request",
-    `<p>You requested a password reset. Click the link below within 15 minutes.</p>
-     <a href="${resetUrl}">${resetUrl}</a>
-     <p>If you did not request this, ignore this email.</p>`,
-  );
+  try {
+    await sendMail(
+      email,
+      "Password Reset Request",
+      `<p>You requested a password reset. Click the link below within 15 minutes.</p>
+       <a href="${resetUrl}">${resetUrl}</a>
+       <p>If you did not request this, ignore this email.</p>`,
+    );
+  } catch (err) {
+    // Log but don't expose SMTP failures to the client
+    console.error("Password reset email failed:", err.message);
+  }
 };
 
 const resetPassword = async (token, newPassword) => {

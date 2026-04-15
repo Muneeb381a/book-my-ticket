@@ -32,7 +32,7 @@ const userSchema = new mongoose.Schema(
     },
     isVerified: {
       type: Boolean,
-      default: false,
+      default: true, // email verification disabled — users are active on registration
     },
     verificationToken: { type: String, select: false },
     verificationTokenExpires: { type: Date, select: false },

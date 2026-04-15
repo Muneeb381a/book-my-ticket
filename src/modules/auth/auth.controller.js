@@ -10,7 +10,7 @@ const COOKIE_OPTIONS = {
 
 const register = async (req, res) => {
   const user = await authService.register(req.body);
-  ApiResponse.created(res, "Registration successful. Please verify your email.", user);
+  ApiResponse.created(res, "Registration successful.", user);
 };
 
 const login = async (req, res) => {
