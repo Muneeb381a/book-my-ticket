@@ -1,5 +1,6 @@
+import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { sendMail } from "../../common/config/email.js"; // sendVerificationEmail removed — email verification disabled
+import { sendMail } from "../../common/config/email.js";
 import ApiError from "../../common/utils/api-error.js";
 import {
   generateAccessToken,
@@ -16,13 +17,15 @@ const register = async ({ name, email, password, role }) => {
   const existing = await User.findOne({ email });
   if (existing) throw ApiError.conflict("Email already exists");
 
-  // Email verification is disabled — users are active immediately after registration
+  // Hash password here — no pre-save hook
+  const hashedPassword = await bcrypt.hash(password, 12);
+
   const user = await User.create({
     name,
     email,
-    password,
+    password: hashedPassword,
     role,
-    isVerified: true, // skip email verification flow
+    isVerified: true,
   });
 
   const userObj = user.toObject();
@@ -38,11 +41,10 @@ const login = async ({ email, password }) => {
   const isMatch = await user.comparePassword(password);
   if (!isMatch) throw ApiError.unauthorized("Invalid email or password");
 
-  // isVerified check removed — email verification is disabled
-
   const accessToken = generateAccessToken({ id: user._id, role: user.role });
   const refreshToken = generateRefreshToken({ id: user._id });
 
+  // Save hashed refresh token — no password change so no hashing needed here
   user.refreshToken = hashToken(refreshToken);
   await user.save({ validateBeforeSave: false });
 
@@ -65,7 +67,6 @@ const refresh = async (token) => {
   }
 
   const accessToken = generateAccessToken({ id: user._id, role: user.role });
-
   return { accessToken };
 };
 
@@ -75,12 +76,11 @@ const logout = async (userId) => {
 
 const forgotPassword = async (email) => {
   const user = await User.findOne({ email });
-  // Intentionally vague — don't reveal whether email exists
-  if (!user) return;
+  if (!user) return; // don't reveal whether email exists
 
   const { rawToken, hashedToken } = generateResetToken();
   user.resetPasswordtoken = hashedToken;
-  user.resetpasswordExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
+  user.resetpasswordExpires = Date.now() + 15 * 60 * 1000;
   await user.save({ validateBeforeSave: false });
 
   const resetUrl = `${process.env.CLIENT_URL}/reset-password/${rawToken}`;
@@ -88,12 +88,10 @@ const forgotPassword = async (email) => {
     await sendMail(
       email,
       "Password Reset Request",
-      `<p>You requested a password reset. Click the link below within 15 minutes.</p>
-       <a href="${resetUrl}">${resetUrl}</a>
-       <p>If you did not request this, ignore this email.</p>`,
+      `<p>Click the link below to reset your password (expires in 15 minutes).</p>
+       <a href="${resetUrl}">${resetUrl}</a>`,
     );
   } catch (err) {
-    // Log but don't expose SMTP failures to the client
     console.error("Password reset email failed:", err.message);
   }
 };
@@ -101,27 +99,28 @@ const forgotPassword = async (email) => {
 const resetPassword = async (token, newPassword) => {
   const hashedToken = hashToken(token);
   const user = await User.findOne({
-    resetPasswordtoken:   hashedToken,
-    resetpasswordExpires: { $gt: Date.now() }, // token must not be expired
-  }).select("+resetPasswordtoken +resetpasswordExpires");
+    resetPasswordtoken: hashedToken,
+    resetpasswordExpires: { $gt: Date.now() },
+  });
 
   if (!user) throw ApiError.badRequest("Invalid or expired password reset token");
 
-  user.password             = newPassword; // pre-save hook will hash it
-  user.resetPasswordtoken   = undefined;
+  // Hash new password explicitly
+  user.password = await bcrypt.hash(newPassword, 12);
+  user.resetPasswordtoken = undefined;
   user.resetpasswordExpires = undefined;
-  user.refreshToken         = null;        // invalidate all existing sessions
-  await user.save();
+  user.refreshToken = null;
+  await user.save({ validateBeforeSave: false });
 };
 
 const verifyEmail = async (token) => {
   const hashedToken = hashToken(token);
   const user = await User.findOne({
     verificationToken: hashedToken,
-    verificationTokenExpires: { $gt: Date.now() }, // check expiry
+    verificationTokenExpires: { $gt: Date.now() },
   }).select("+verificationToken +verificationTokenExpires");
 
-  if (!user) throw ApiError.badRequest("Invalid or expired verification token"); // fixed: was null-deref
+  if (!user) throw ApiError.badRequest("Invalid or expired verification token");
 
   user.isVerified = true;
   user.verificationToken = undefined;

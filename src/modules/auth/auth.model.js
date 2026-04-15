@@ -13,7 +13,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       trim: true,
-
       required: [true, "Email is required"],
       unique: true,
       lowercase: true,
@@ -23,7 +22,6 @@ const userSchema = new mongoose.Schema(
       required: [true, "Password is required"],
       minlength: 8,
       select: false,
-      //We know ;)
     },
     role: {
       type: String,
@@ -32,7 +30,7 @@ const userSchema = new mongoose.Schema(
     },
     isVerified: {
       type: Boolean,
-      default: true, // email verification disabled — users are active on registration
+      default: true,
     },
     verificationToken: { type: String, select: false },
     verificationTokenExpires: { type: Date, select: false },
@@ -43,12 +41,7 @@ const userSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
-userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 12);
-  next();
-});
-
+// No pre-save hook — password is hashed explicitly in the service layer
 userSchema.methods.comparePassword = async function (clearTextPassword) {
   return bcrypt.compare(clearTextPassword, this.password);
 };
