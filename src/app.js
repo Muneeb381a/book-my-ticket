@@ -69,6 +69,11 @@ app.use("/api/theaters", theaterRoute);
 app.use("/api/shows",    showRoute);
 app.use("/api/bookings", bookingRoute);
 
+// ── 404 catch-all — must sit after every route ───────────────────────────────
+app.use((_req, res) => {
+  res.status(404).json({ success: false, message: `Cannot ${_req.method} ${_req.path}` });
+});
+
 // ── Global error handler ──────────────────────────────────────────────────────
 app.use((err, req, res, next) => {
   let statusCode = err.statusCode || 500;
