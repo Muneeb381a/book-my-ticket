@@ -1,6 +1,5 @@
 import cookieParser from "cookie-parser";
 import express from "express";
-import swaggerUiDist from "swagger-ui-dist";
 import { swaggerSpec } from "./common/config/swagger.js";
 import authRoute    from "./modules/auth/auth.routes.js";
 import movieRoute   from "./modules/movie/movie.routes.js";
@@ -15,14 +14,10 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
 // ── Swagger docs ─────────────────────────────────────────────────────────────
-// Serve static assets (JS/CSS) from swagger-ui-dist
-// { index: false } prevents the dist's own index.html from being served
-app.use("/api-docs", express.static(swaggerUiDist.absolutePath(), { index: false }));
-
-// Serve the OpenAPI spec as JSON
+// Spec as JSON — referenced by the UI below
 app.get("/api-docs/swagger.json", (_req, res) => res.json(swaggerSpec));
 
-// Serve the Swagger UI shell — points to our spec
+// Assets loaded from CDN so this works on Vercel (serverless can't serve node_modules)
 app.get("/api-docs", (_req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -30,12 +25,12 @@ app.get("/api-docs", (_req, res) => {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>BookMyTicket API Docs</title>
-  <link rel="stylesheet" href="/api-docs/swagger-ui.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css" />
 </head>
 <body>
   <div id="swagger-ui"></div>
-  <script src="/api-docs/swagger-ui-bundle.js"></script>
-  <script src="/api-docs/swagger-ui-standalone-preset.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
   <script>
     window.onload = function () {
       SwaggerUIBundle({

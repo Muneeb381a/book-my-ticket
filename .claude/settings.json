@@ -7,7 +7,12 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/api-docs/swagger.json)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/api-docs/swagger-ui-bundle.js)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5000/api-docs/)",
-      "Bash(curl -s http://localhost:5000/api-docs/)"
+      "Bash(curl -s http://localhost:5000/api-docs/)",
+      "Bash(curl -s http://localhost:5000/api-docs)",
+      "Bash(curl -sv http://localhost:5000/api-docs)",
+      "Bash(curl -sL http://localhost:5000/api-docs)",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(taskkill //F //IM node.exe)"
     ]
   }
 }
